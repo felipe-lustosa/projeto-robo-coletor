@@ -9,6 +9,7 @@
 # pedido rejeitado), pensando em trilha de auditoria, não só depuração.
 
 from celular_robo.observadores_base import Observador
+from celular_robo.modos import ModoAguardandoVerificacao
 
 class EquipeDeTestes(Observador):
     def __init__(self):
@@ -18,6 +19,8 @@ class EquipeDeTestes(Observador):
         if evento == "bandeja_pronta":
             self.bandeja_pronta = True
             robo = dados.get("robo")
+            if robo is not None:
+                robo.modo = ModoAguardandoVerificacao()
             alvo = f" ({robo.nome})" if robo else ""
             print(f"[EquipeDeTestes] bandeja pronta pra retirada{alvo}.")
 
