@@ -7,7 +7,9 @@
 # __init_subclass__ registrando cada rota, ver Seção 2.2 (metaprogramação
 # aplicada a uma segunda hierarquia).
 from abc import ABC, abstractmethod
+
 from celular_robo.robo_base import Direcao
+from celular_robo.excecoes import PedidoInvalido
 
 
 class RotaColeta(ABC):
@@ -39,6 +41,16 @@ class RotaColeta(ABC):
             robo.girar_ate(Direcao.SUL)
             robo.avancar_n(robo.y - ty)
 
+    def _depositar(self, robo, comando):
+        comando.quantidade_coletada = comando.quantidade
+        robo.bandeja[comando.codinome] = (
+            robo.bandeja.get(comando.codinome, 0) + comando.quantidade
+        )
+        robo.notificar(
+            "item_coletado", codinome=comando.codinome, quantidade=comando.quantidade
+        )
+
+
 
 class RotaDireta(RotaColeta):
     """Vai direto até cada prateleira, sem revalidar o item."""
@@ -51,4 +63,16 @@ class RotaDireta(RotaColeta):
 
 
 class RotaComDuplaConferencia(RotaColeta):
-  pass
+    def coletar(self, robo, comando):
+        self._navegar_ate(robo, comando.posicao)
+        self._conferir(robo, comando)
+        self._conferir(robo, comando)
+        self._depositar(robo, comando)
+
+    def _conferir(self, robo, comando):
+        esperado = tuple(comando.posicao)
+        if (robo.x, robo.y) != esperado:
+            raise PedidoInvalido(
+                f"{comando.codinome}: robô em ({robo.x}, {robo.y}), "
+                f"esperado {esperado}"
+            )
