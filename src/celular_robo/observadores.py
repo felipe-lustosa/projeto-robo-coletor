@@ -26,4 +26,12 @@ class EquipeDeTestes(Observador):
 
 
 class RegistroAuditoria(Observador):
-    pass
+    def __init__(self):
+        self.eventos = []
+
+    def atualizar(self, evento, **dados):
+        self.eventos.append((evento, dados))
+        robo = dados.get("robo")
+        alvo = f"[{robo.nome}] " if robo else ""
+        extras = {k: v for k, v in dados.items() if k != "robo"}
+        print(f"[AUDITORIA] {alvo}{evento}: {extras}")
