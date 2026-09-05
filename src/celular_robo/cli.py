@@ -1,9 +1,6 @@
-# CLI — enunciado, Seção 4.
-#
-# TODO: implemente aqui. Menu interativo (ou argparse, à sua escolha):
-# listar pedido carregado, processar pedido, ver estado da bandeja,
-# aprovar/rejeitar retirada da equipe de testes.
+"""Menu interativo do robô coletor (Seção 4)."""
 
+import json
 import os
 
 from celular_robo.persistencia import montar_robo_de_config, montar_pedido_de_json
@@ -17,8 +14,7 @@ PEDIDO_PADRAO = os.path.join(CAMINHO_BASE, "dados", "pedido_coleta_exemplo.json"
 
 
 class Sessao:
-    """Guarda o robô, o pedido carregado e os observadores da sessão de
-    CLI — o menu só orquestra chamadas nisso aqui."""
+    """Robô, pedido carregado e observadores da sessão; o menu só orquestra."""
 
     def __init__(self, robo, equipe, auditoria):
         self.robo = robo
@@ -29,7 +25,7 @@ class Sessao:
 
 
 def iniciar_sessao(caminho_config=CONFIG_PADRAO):
-    import json
+    """Monta o robô do arquivo de config e registra os observadores."""
     with open(caminho_config, encoding="utf-8") as arquivo:
         config = json.load(arquivo)
     robo = montar_robo_de_config(config)
@@ -41,11 +37,13 @@ def iniciar_sessao(caminho_config=CONFIG_PADRAO):
 
 
 def carregar_pedido(sessao, caminho_pedido=PEDIDO_PADRAO):
+    """Carrega um pedido de coleta na sessão."""
     sessao.pedido = montar_pedido_de_json(caminho_pedido)
     sessao.indice = 0
 
 
 def listar_pedido(sessao):
+    """Mostra os itens do pedido, marcando os já processados."""
     if sessao.pedido is None:
         print("Nenhum pedido carregado.")
         return
@@ -57,6 +55,7 @@ def listar_pedido(sessao):
 
 
 def processar_pedido(sessao):
+    """Executa os itens restantes; para na primeira falha de coleta."""
     if sessao.pedido is None:
         print("Nenhum pedido carregado.")
         return
@@ -80,10 +79,12 @@ def processar_pedido(sessao):
 
 
 def ver_bandeja(sessao):
+    """Imprime o conteúdo atual da bandeja."""
     print(f"Bandeja ({len(sessao.robo)} item(ns)): {sessao.robo.bandeja}")
 
 
 def aprovar_retirada(sessao):
+    """Libera a bandeja e deixa o robô pronto pra um novo pedido."""
     if not sessao.equipe.bandeja_pronta:
         print("Bandeja ainda não está pronta.")
         return
@@ -95,6 +96,7 @@ def aprovar_retirada(sessao):
 
 
 def rejeitar_retirada(sessao):
+    """Recusa a retirada; a bandeja e o pedido continuam como estão."""
     if not sessao.equipe.bandeja_pronta:
         print("Bandeja ainda não está pronta.")
         return
@@ -105,6 +107,7 @@ def rejeitar_retirada(sessao):
 
 
 def menu():
+    """Laço do menu interativo."""
     sessao = iniciar_sessao()
     opcoes = {
         "1": ("listar pedido carregado", lambda: listar_pedido(sessao)),

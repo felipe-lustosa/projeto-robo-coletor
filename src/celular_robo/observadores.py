@@ -1,17 +1,12 @@
-# Observer — EquipeDeTestes, RegistroAuditoria — enunciado, Seção 2.3.
-#
-# Herde de `Observador` (observadores_base.py — ABC com registro automático):
-#
-#   from celular_robo.observadores_base import Observador
-#
-# TODO: implemente aqui. EquipeDeTestes(Observador) reage a "bandeja_pronta";
-# RegistroAuditoria(Observador) loga todo evento (coleta, bandeja pronta,
-# pedido rejeitado), pensando em trilha de auditoria, não só depuração.
+"""Observer: equipe de testes e trilha de auditoria (Seção 2.3)."""
 
 from celular_robo.observadores_base import Observador
 from celular_robo.modos import ModoAguardandoVerificacao
 
+
 class EquipeDeTestes(Observador):
+    """Reage a "bandeja_pronta" e põe o robô em ModoAguardandoVerificacao."""
+
     def __init__(self):
         self.bandeja_pronta = False
 
@@ -26,6 +21,8 @@ class EquipeDeTestes(Observador):
 
 
 class RegistroAuditoria(Observador):
+    """Guarda e imprime todo evento notificado pelo robô."""
+
     def __init__(self):
         self.eventos = []
 

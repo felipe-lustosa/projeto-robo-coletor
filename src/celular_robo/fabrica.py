@@ -1,15 +1,9 @@
-# Factory — criar_robo_coletor, criar_robo_configurado — enunciado, Seção 2.3.
-# (Ver fabrica_base.py — genérico do curso, não editar: criar_robo("RoboColetor",
-# ...) já funciona, pode chamar direto ou usar como modelo.)
-#
-# TODO: implemente aqui. criar_robo_coletor(tipo_nome, ...) a partir do
-# _registro (Seção 2.2); criar_robo_configurado combina isso com a validação do
-# modelo de features (Seção 2.4).
-#
-# Contrato mínimo exigido por tests/test_00_fornecido.py (não altere a
-# assinatura abaixo sem também atualizar aquele arquivo):
-#
-#   criar_robo_configurado(tipo_nome, nome, estrategia_nome=..., area_nome=...)
+"""Factory do robô coletor (Seção 2.3).
+
+Contrato exigido por tests/test_00_fornecido.py:
+criar_robo_configurado(tipo_nome, nome, estrategia_nome=..., area_nome=...)
+"""
+
 from celular_robo.fabrica_base import criar_robo
 from celular_robo.estrategias import RotaColeta
 from celular_robo.modos import ModoColetando
@@ -21,6 +15,7 @@ from celular_robo.modelo_features import (
 
 
 def criar_robo_coletor(tipo_nome, nome, estrategia_nome, area_nome, **kwargs):
+    """Monta o robô com a rota, o modo inicial e os obstáculos da área."""
     classe_rota = RotaColeta._registro_rotas[NOMES_ROTAS[estrategia_nome]]
     return criar_robo(
         tipo_nome, nome,
@@ -32,5 +27,6 @@ def criar_robo_coletor(tipo_nome, nome, estrategia_nome, area_nome, **kwargs):
 
 
 def criar_robo_configurado(tipo_nome, nome, estrategia_nome, area_nome, **kwargs):
+    """Valida a configuração (Seção 2.4) antes de criar o robô."""
     validar_configuracao(tipo_nome, estrategia_nome, area_nome)
     return criar_robo_coletor(tipo_nome, nome, estrategia_nome, area_nome, **kwargs)

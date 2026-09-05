@@ -1,11 +1,9 @@
-# Strategy — RotaDireta, RotaComDuplaConferencia — enunciado, Seção 2.3.
-# (Não confundir com estrategias_base.py — genérico do curso, não editar. Ao
-# contrário de Command/Observer/State, aqui você NÃO herda de `Estrategia`:
-# escreva sua própria base, ver TODO abaixo — motivo em estrategias_base.py.)
-#
-# TODO: implemente aqui. Considere uma base comum (RotaColeta) com
-# __init_subclass__ registrando cada rota, ver Seção 2.2 (metaprogramação
-# aplicada a uma segunda hierarquia).
+"""Strategy: rotas de coleta (Seção 2.3).
+
+A base própria RotaColeta mantém um registro separado do Strategy genérico
+do curso (estrategias_base.py), de onde sai ESTRATEGIAS_VALIDAS.
+"""
+
 from abc import ABC, abstractmethod
 
 from celular_robo.robo_base import Direcao
@@ -13,6 +11,8 @@ from celular_robo.excecoes import PedidoInvalido
 
 
 class RotaColeta(ABC):
+    """Base das rotas; cada subclasse se registra em _registro_rotas."""
+
     _registro_rotas = {}
 
     def __init_subclass__(cls, **kwargs):
@@ -21,12 +21,13 @@ class RotaColeta(ABC):
 
     @abstractmethod
     def coletar(self, robo, comando):
-        ...
+        """Navega até o item do comando e o deposita na bandeja."""
 
     def mover(self, robo):
         return robo.avancar()
 
     def _navegar_ate(self, robo, posicao):
+        """Anda primeiro no eixo x, depois no y, até a posição."""
         tx, ty = posicao
         if robo.x < tx:
             robo.girar_ate(Direcao.LESTE)
@@ -42,6 +43,10 @@ class RotaColeta(ABC):
             robo.avancar_n(robo.y - ty)
 
     def _depositar(self, robo, comando):
+        """Põe o item na bandeja e notifica "item_coletado".
+
+        Toda rota deve depositar por aqui — é o que a auditoria enxerga.
+        """
         comando.quantidade_coletada = comando.quantidade
         robo.bandeja[comando.codinome] = (
             robo.bandeja.get(comando.codinome, 0) + comando.quantidade
@@ -51,18 +56,17 @@ class RotaColeta(ABC):
         )
 
 
-
 class RotaDireta(RotaColeta):
     """Vai direto até cada prateleira, sem revalidar o item."""
+
     def coletar(self, robo, comando):
         self._navegar_ate(robo, comando.posicao)
-        comando.quantidade_coletada = comando.quantidade
-        robo.bandeja[comando.codinome] = (
-            robo.bandeja.get(comando.codinome, 0) + comando.quantidade
-        )
+        self._depositar(robo, comando)
 
 
 class RotaComDuplaConferencia(RotaColeta):
+    """Confere a posição antes de depositar — mais lenta, mais segura."""
+
     def coletar(self, robo, comando):
         self._navegar_ate(robo, comando.posicao)
         self._conferir(robo, comando)
@@ -70,6 +74,7 @@ class RotaComDuplaConferencia(RotaColeta):
         self._depositar(robo, comando)
 
     def _conferir(self, robo, comando):
+        """Levanta PedidoInvalido se o robô não parou na posição do item."""
         esperado = tuple(comando.posicao)
         if (robo.x, robo.y) != esperado:
             raise PedidoInvalido(

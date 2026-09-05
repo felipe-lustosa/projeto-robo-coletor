@@ -87,19 +87,47 @@ enunciado, sem reorganização.
   `validar_configuracao` porque esta só enxerga o JSON de config do robô,
   sem visibilidade dos itens do pedido.
 - **`requires` de item para estratégia** (`fragil` exige
-  `RotaComDuplaConferencia`, `urgente` exige `RotaDireta`) →
-  `ConfiguracaoInvalida`, checado em `ComandoColeta.executar(robo)` no
-  momento da coleta — é aí que se sabe, ao mesmo tempo, o item (do
-  pedido) e a estratégia atual (do robô); antes disso nenhum dos dois
-  lados sozinho tem essa informação completa.
+  `RotaComDuplaConferencia`, `urgente` exige `RotaDireta`): declarado na
+  tabela `REQUER` (`modelo_features.py`, ao lado de `EXCLUI`) e aplicado
+  por `validar_item_para_estrategia`, que `ComandoColeta.executar(robo)`
+  chama no momento da coleta → `ConfiguracaoInvalida`. A checagem é no
+  momento da coleta, e não em `validar_configuracao`, porque é aí que se
+  sabe ao mesmo tempo o item (do pedido) e a estratégia atual (do robô);
+  antes disso nenhum dos dois lados sozinho tem essa informação completa.
+  A tabela fica em `modelo_features.py` (não espalhada em `isinstance`
+  dentro do comando) pra `requires` e `excludes` morarem no mesmo lugar,
+  como o enunciado organiza a Seção 2.4.
 - **Item inválido entre vários no mesmo pedido** (Seção 2.5) → rejeita o
   pedido inteiro (`PedidoInvalido` na primeira falha), não processa os
   itens válidos e pula o inválido. Opção mais simples; a alternativa
   (pular e logar via `RegistroAuditoria`) também seria defensável.
-- **`PedidoInvalido` por "quantidade pedida maior que o disponível"**
-  (Seção 2.5): não implementado — o projeto não define um estoque/lote
-  disponível separado do pedido, só o pedido em si. Só valido
-  `quantidade <= 0` como quantidade inválida.
+- **Representação d"o lote"** (Seção 2.5): o JSON do pedido só traz o
+  *nome* do lote, então a relação codinome → quantidade disponível mora
+  em `LOTE_DISPONIVEL`, um `dict` de módulo em `persistencia.py` — a
+  primeira das duas opções sugeridas pelo enunciado (dict no módulo que
+  faz a validação, ou arquivo próprio em `dados/`); escolhi o dict por
+  não exigir um terceiro arquivo de dados só pra isso.
+  `montar_pedido_de_json(caminho, lote_disponivel=None)` aceita um lote
+  injetado, usado pelos testes pra não depender dos codinomes de produção.
+  Contra esse lote são validados os três casos de `PedidoInvalido` da
+  Seção 2.5: codinome inexistente no lote, quantidade pedida maior que a
+  disponível (somada por codinome, se o mesmo aparecer em mais de um
+  item) e pedido vazio.
+- **Histórico de comandos** (Seção 2.3): `ComandoColeta.executar(robo)`
+  guarda o comando em `robo._historico_comandos` (exposto pela property
+  `robo.historico`, herdada de `Robo`) depois da coleta dar certo, e
+  `desfazer(robo)` o remove de lá — o histórico é a pilha que o *undo*
+  consome, não um log paralelo.
+- **Depósito na bandeja passa sempre por `RotaColeta._depositar`**: é esse
+  método que emite `robo.notificar("item_coletado", ...)`, então é por ele
+  que `RegistroAuditoria` enxerga a coleta. As duas rotas o reaproveitam
+  em vez de mexer em `robo.bandeja` direto — se `RotaDireta` fizesse o
+  depósito à mão, a coleta sumiria da trilha de auditoria justamente na
+  configuração padrão.
+- **Todo evento passa por `robo.notificar`**, inclusive `pedido_rejeitado`
+  (na CLI, tanto na falha ao coletar quanto na rejeição da equipe) — a CLI
+  não chama `RegistroAuditoria.atualizar` direto, pra o Observer continuar
+  sendo o único caminho de propagação de evento.
 - **Retorno de `montar_pedido_de_json`**: um `Pedido = namedtuple("Pedido",
   ["lote", "comandos"])`, não só a lista de `ComandoColeta` — mantém o
   nome do lote (campo `"lote"` do JSON) acessível pra CLI/testes sem virar
@@ -134,9 +162,9 @@ enunciado, sem reorganização.
 | Factory | `fabrica.py` — `criar_robo_coletor`, `criar_robo_configurado` |
 | Observer | `observadores.py` — `EquipeDeTestes`, `RegistroAuditoria` |
 | State (transição via Observer) | `modos.py` — `ModoColetando`, `ModoAguardandoVerificacao` |
-| Modelo de features / LPS (`requires`/`excludes`) | `modelo_features.py` — `TIPOS_VALIDOS`, `ESTRATEGIAS_VALIDAS`, `AREAS_VALIDAS`, `EXCLUI`, `validar_configuracao`; `comandos.py` — `ComandoColeta.executar` (requires item→estratégia) |
+| Modelo de features / LPS (`requires`/`excludes`) | `modelo_features.py` — `TIPOS_VALIDOS`, `ESTRATEGIAS_VALIDAS`, `AREAS_VALIDAS`, `REQUER`, `EXCLUI`, `validar_configuracao`, `validar_item_para_estrategia` |
 | Hierarquia de exceções | `excecoes.py` — `ErroColeta`, `ConfiguracaoInvalida`, `PedidoInvalido` |
-| Configuração/persistência | `persistencia.py` — `montar_robo_de_config`, `montar_pedido_de_json` |
+| Configuração/persistência | `persistencia.py` — `montar_robo_de_config`, `montar_pedido_de_json`, `LOTE_DISPONIVEL` |
 | CLI | `cli.py` |
 | Testes fornecidos | `tests/test_00_fornecido.py` |
 | Testes próprios | `tests/test_configuracao.py`, `tests/test_pedido.py`, `tests/test_fluxo_completo.py` (fixtures em `tests/conftest.py`) |

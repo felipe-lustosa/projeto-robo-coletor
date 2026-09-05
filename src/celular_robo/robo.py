@@ -1,7 +1,10 @@
+"""RoboColetor e o descriptor QuantidadeValida (Seção 2.1)."""
+
 from celular_robo.robo_base import Robo
 
+
 class QuantidadeValida:
-    """Descriptor valida que a quantidade coletada não é negativa nem passa da quantidade pedida"""
+    """Descriptor: a quantidade coletada fica entre 0 e a quantidade pedida."""
 
     def __set_name__(self, owner, name):
         self.nome_publico = name
@@ -24,8 +27,7 @@ class QuantidadeValida:
 
 
 class RoboColetor(Robo):
-    """Navega até cada prateleira, coleta os itens do pedido e deposita
-    tudo na bandeja."""
+    """Robô que navega até as prateleiras e deposita os itens na bandeja."""
 
     def __init__(self, nome, **kwargs):
         super().__init__(nome, **kwargs)
@@ -40,4 +42,5 @@ class RoboColetor(Robo):
         )
 
     def __len__(self):
+        """Total de itens na bandeja."""
         return sum(self.bandeja.values())

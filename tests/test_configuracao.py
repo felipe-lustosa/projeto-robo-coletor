@@ -1,5 +1,4 @@
-# TODO: seus testes de configuração/LPS — enunciado, Seção 2.7 (pytest.raises,
-# @pytest.mark.parametrize cobrindo estratégia×área).
+"""Testes do modelo de features: estratégia x área (Seção 2.7)."""
 
 import pytest
 
@@ -18,6 +17,7 @@ CENARIOS = [
 
 @pytest.mark.parametrize("estrategia_nome, area_nome, classe_esperada, excecao_esperada", CENARIOS)
 def test_contrato_criar_ou_recusar(estrategia_nome, area_nome, classe_esperada, excecao_esperada):
+    """Cada combinação estratégia x área ou cria o robô, ou é recusada."""
     if excecao_esperada is not None:
         with pytest.raises(excecao_esperada):
             criar_robo_configurado(
@@ -36,6 +36,7 @@ def test_contrato_criar_ou_recusar(estrategia_nome, area_nome, classe_esperada, 
 
 
 def test_area_quarentena_tem_obstaculo_de_verdade():
+    """A área escolhida chega ao robô como obstáculos de verdade."""
     robo = criar_robo_configurado(
         "RoboColetor", "Coletor-Teste",
         estrategia_nome="com_dupla_conferencia", area_nome="area_quarentena",
