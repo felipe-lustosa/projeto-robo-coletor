@@ -69,7 +69,7 @@ def processar_pedido(sessao):
         try:
             comando.executar(sessao.robo)
         except ErroColeta as erro:
-            sessao.auditoria.atualizar("pedido_rejeitado", robo=sessao.robo, motivo=str(erro))
+            sessao.robo.notificar("pedido_rejeitado", motivo=str(erro))
             print(f"Falha ao coletar {comando.codinome}: {erro}")
             return
         sessao.indice += 1
@@ -99,7 +99,7 @@ def rejeitar_retirada(sessao):
         print("Bandeja ainda não está pronta.")
         return
     sessao.equipe.bandeja_pronta = False
-    sessao.auditoria.atualizar("pedido_rejeitado", robo=sessao.robo, motivo="rejeitado pela equipe")
+    sessao.robo.notificar("pedido_rejeitado", motivo="rejeitado pela equipe")
     sessao.robo.modo = ModoColetando()
     print("Retirada rejeitada — itens coletados permanecem, mesmo pedido continua.")
 

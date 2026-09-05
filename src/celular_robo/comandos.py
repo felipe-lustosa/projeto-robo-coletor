@@ -9,8 +9,7 @@
 # bandeja, decrementa a contagem coletada).
 from celular_robo.comandos_base import Comando
 from celular_robo.robo import QuantidadeValida
-from celular_robo.estrategias import RotaDireta, RotaComDuplaConferencia
-from celular_robo.excecoes import ConfiguracaoInvalida
+from celular_robo.modelo_features import validar_item_para_estrategia
 
 
 class ComandoColeta(Comando):
@@ -29,27 +28,29 @@ class ComandoColeta(Comando):
         self.quantidade_coletada = 0
 
     def executar(self, robo):
-        if self.fragil and not isinstance(robo.estrategia, RotaComDuplaConferencia):
-            raise ConfiguracaoInvalida(
-                f"{self.codinome}: item frágil exige RotaComDuplaConferencia, "
-                f"robô está com {type(robo.estrategia).__name__}"
-            )
-        if self.urgente and not isinstance(robo.estrategia, RotaDireta):
-            raise ConfiguracaoInvalida(
-                f"{self.codinome}: item urgente exige RotaDireta, "
-                f"robô está com {type(robo.estrategia).__name__}"
-            )
+        """Confere o `requires` item -> estratégia (REQUER, modelo_features),
+        delega a navegação/coleta pra rota configurada no robô e guarda o
+        comando em `robo._historico_comandos` — a pilha que `desfazer`
+        consome."""
+        validar_item_para_estrategia(
+            self.codinome, robo.estrategia,
+            fragil=self.fragil, urgente=self.urgente,
+        )
         robo.estrategia.coletar(robo, self)
+        robo._historico_comandos.append(self)
 
     def desfazer(self, robo):
-        """Remove o item da bandeja e zera a contagem coletada deste
-        comando."""
+        """Remove o item da bandeja, zera a contagem coletada deste comando
+        e o tira do histórico."""
         restante = robo.bandeja.get(self.codinome, 0) - self.quantidade_coletada
         if restante > 0:
             robo.bandeja[self.codinome] = restante
         else:
             robo.bandeja.pop(self.codinome, None)
         self.quantidade_coletada = 0
+        if self in robo._historico_comandos:
+            robo._historico_comandos.remove(self)
+        robo.notificar("coleta_desfeita", codinome=self.codinome)
 
     def __repr__(self):
         return f"ComandoColeta({self.codinome!r}, {self.posicao}, {self.quantidade})"
