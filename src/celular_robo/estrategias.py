@@ -7,7 +7,7 @@ do curso (estrategias_base.py), de onde sai ESTRATEGIAS_VALIDAS.
 from abc import ABC, abstractmethod
 
 from celular_robo.robo_base import Direcao
-from celular_robo.excecoes import PedidoInvalido
+from celular_robo.excecoes import ColetaBloqueada
 
 
 class RotaColeta(ABC):
@@ -27,7 +27,12 @@ class RotaColeta(ABC):
         return robo.avancar()
 
     def _navegar_ate(self, robo, posicao):
-        """Anda primeiro no eixo x, depois no y, até a posição."""
+        """Anda primeiro no eixo x, depois no y, até a posição.
+
+        `avancar_n` para no primeiro obstáculo, então a chegada é conferida
+        no fim: sem isso a rota depositaria um item que o robô nunca
+        alcançou.
+        """
         tx, ty = posicao
         if robo.x < tx:
             robo.girar_ate(Direcao.LESTE)
@@ -41,6 +46,10 @@ class RotaColeta(ABC):
         elif robo.y > ty:
             robo.girar_ate(Direcao.SUL)
             robo.avancar_n(robo.y - ty)
+        if robo.posicao != (tx, ty):
+            raise ColetaBloqueada(
+                f"caminho bloqueado até {(tx, ty)}: robô parou em {robo.posicao}"
+            )
 
     def _depositar(self, robo, comando):
         """Põe o item na bandeja e notifica "item_coletado".
@@ -74,10 +83,10 @@ class RotaComDuplaConferencia(RotaColeta):
         self._depositar(robo, comando)
 
     def _conferir(self, robo, comando):
-        """Levanta PedidoInvalido se o robô não parou na posição do item."""
+        """Levanta ColetaBloqueada se o robô não parou na posição do item."""
         esperado = tuple(comando.posicao)
-        if (robo.x, robo.y) != esperado:
-            raise PedidoInvalido(
+        if robo.posicao != esperado:
+            raise ColetaBloqueada(
                 f"{comando.codinome}: robô em ({robo.x}, {robo.y}), "
                 f"esperado {esperado}"
             )

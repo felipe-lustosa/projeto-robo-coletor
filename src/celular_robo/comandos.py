@@ -24,7 +24,7 @@ class ComandoColeta(Comando):
             self.codinome, robo.estrategia,
             fragil=self.fragil, urgente=self.urgente,
         )
-        robo.estrategia.coletar(robo, self)
+        robo.modo.coletar(robo, self)
         robo._historico_comandos.append(self)
 
     def desfazer(self, robo):

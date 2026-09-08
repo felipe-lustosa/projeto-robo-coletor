@@ -11,3 +11,9 @@ class ConfiguracaoInvalida(ErroColeta):
 
 class PedidoInvalido(ErroColeta):
     """Conteúdo inválido no pedido: codinome, quantidade ou pedido vazio."""
+
+
+class ColetaBloqueada(ErroColeta):
+    """Coleta impedida pelo estado de execução, com config e pedido
+    válidos: robô em ModoAguardandoVerificacao, ou prateleira inalcançável
+    por obstáculo no caminho."""

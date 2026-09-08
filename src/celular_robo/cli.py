@@ -73,9 +73,19 @@ def processar_pedido(sessao):
             return
         sessao.indice += 1
 
-    total_pedido = sum(c.quantidade for c in sessao.pedido.comandos)
-    if len(sessao.robo) >= total_pedido:
-        sessao.robo.notificar("bandeja_pronta")
+    sessao.robo.conferir_bandeja(sessao.pedido)
+
+
+def desfazer_ultima_coleta(sessao):
+    """Undo do Command: devolve a última coleta (bandeja, contagem e
+    histórico do robô) e recua o ponteiro do pedido."""
+    if not sessao.robo.historico:
+        print("Nada a desfazer.")
+        return
+    comando = sessao.robo.historico[-1]
+    comando.desfazer(sessao.robo)
+    sessao.indice = max(0, sessao.indice - 1)
+    print(f"Coleta de {comando.codinome} desfeita.")
 
 
 def ver_bandeja(sessao):
@@ -114,8 +124,9 @@ def menu():
         "2": ("carregar pedido de exemplo", lambda: carregar_pedido(sessao)),
         "3": ("processar pedido", lambda: processar_pedido(sessao)),
         "4": ("ver estado da bandeja", lambda: ver_bandeja(sessao)),
-        "5": ("aprovar retirada", lambda: aprovar_retirada(sessao)),
-        "6": ("rejeitar retirada", lambda: rejeitar_retirada(sessao)),
+        "5": ("desfazer última coleta", lambda: desfazer_ultima_coleta(sessao)),
+        "6": ("aprovar retirada", lambda: aprovar_retirada(sessao)),
+        "7": ("rejeitar retirada", lambda: rejeitar_retirada(sessao)),
         "0": ("sair", None),
     }
     while True:

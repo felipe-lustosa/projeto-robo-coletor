@@ -16,7 +16,7 @@ class EquipeDeTestes(Observador):
             robo = dados.get("robo")
             if robo is not None:
                 robo.modo = ModoAguardandoVerificacao()
-            alvo = f" ({robo.nome})" if robo else ""
+            alvo = f" ({robo.nome})" if robo is not None else ""
             print(f"[EquipeDeTestes] bandeja pronta pra retirada{alvo}.")
 
 
@@ -29,6 +29,6 @@ class RegistroAuditoria(Observador):
     def atualizar(self, evento, **dados):
         self.eventos.append((evento, dados))
         robo = dados.get("robo")
-        alvo = f"[{robo.nome}] " if robo else ""
+        alvo = f"[{robo.nome}] " if robo is not None else ""
         extras = {k: v for k, v in dados.items() if k != "robo"}
         print(f"[AUDITORIA] {alvo}{evento}: {extras}")
