@@ -92,9 +92,14 @@ reorganização.
   `ComandoColeta.executar` chama `robo.modo.coletar(...)`. Assim a regra
   "só depois da equipe aprovar o robô começa um pedido novo" vive no
   modelo, não na CLI.
-- **Quem confere a bandeja é o robô**: `bandeja_completa(pedido)` compara
-  codinome a codinome e `conferir_bandeja(pedido)` emite
-  `notificar("bandeja_pronta")`; a CLI só chama `conferir_bandeja`.
+- **O fluxo do pedido é do robô, não da CLI**:
+  `processar_pedido(pedido, inicio)` executa os comandos, emite
+  `notificar("pedido_rejeitado")` na primeira coleta recusada e confere a
+  bandeja no fim (`bandeja_completa` compara codinome a codinome,
+  `conferir_bandeja` emite `notificar("bandeja_pronta")`). Devolve
+  `(índice do próximo item, erro ou None)`, e a CLI só imprime o resultado —
+  assim os três eventos que a Seção 2.3 pede da auditoria (coleta, bandeja
+  pronta, pedido rejeitado) saem todos do modelo e ficam testáveis.
 - **Nenhuma rota deposita item que o robô não alcançou**: `avancar_n` para
   no primeiro obstáculo, então `RotaColeta._navegar_ate` confere a chegada
   e levanta `ColetaBloqueada`.
@@ -102,9 +107,11 @@ reorganização.
   exemplo do enunciado tem um item `urgente` e um `fragil`, exatamente o
   conflito acima. Usei o trecho como referência de schema; o JSON entregue
   roda de ponta a ponta.
-- **Aprovar/rejeitar** (Seção 2.3): aprovar limpa a bandeja e volta pra
-  `ModoColetando`; rejeitar também volta pra `ModoColetando`, mas mantém os
-  itens coletados e o mesmo pedido, registrando a rejeição na auditoria.
+- **Aprovar/rejeitar** (Seção 2.3): `RoboColetor.aprovar_lote()` limpa a
+  bandeja e volta pra `ModoColetando`; `rejeitar_lote(motivo)` também volta
+  pra `ModoColetando`, mas mantém os itens coletados e o mesmo pedido,
+  registrando a rejeição via `pedido_rejeitado`. A CLI só cuida do flag da
+  `EquipeDeTestes` e do pedido carregado na sessão.
 - **Extensão opcional `RoboTransportador`** (Seção 7): não implementada.
 
 ## Mapeamento pra aulas da disciplina
@@ -120,7 +127,7 @@ reorganização.
 | Command (com `desfazer`) | `comandos.py` — `ComandoColeta` |
 | Factory | `fabrica.py` — `criar_robo_coletor`, `criar_robo_configurado` |
 | Observer | `observadores.py` — `EquipeDeTestes`, `RegistroAuditoria` |
-| State (transição via Observer) | `modos.py` — `ModoColetando`, `ModoAguardandoVerificacao`; `robo.py` — `conferir_bandeja` dispara o Observer |
+| State (transição via Observer) | `modos.py` — `ModoColetando`, `ModoAguardandoVerificacao`; `robo.py` — `conferir_bandeja`/`aprovar_lote`/`rejeitar_lote` disparam o Observer |
 | Modelo de features / LPS (`requires`/`excludes`) | `modelo_features.py` — `TIPOS_VALIDOS`, `ESTRATEGIAS_VALIDAS`, `AREAS_VALIDAS`, `REQUER`, `EXCLUI`, `validar_configuracao`, `validar_item_para_estrategia` |
 | Hierarquia de exceções | `excecoes.py` — `ErroColeta`, `ConfiguracaoInvalida`, `PedidoInvalido`, `ColetaBloqueada` |
 | Configuração/persistência | `persistencia.py` — `montar_robo_de_config`, `montar_pedido_de_json`, `LOTE_DISPONIVEL` |

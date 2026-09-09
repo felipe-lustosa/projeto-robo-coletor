@@ -5,8 +5,7 @@ import os
 
 from celular_robo.persistencia import montar_robo_de_config, montar_pedido_de_json
 from celular_robo.observadores import EquipeDeTestes, RegistroAuditoria
-from celular_robo.modos import ModoColetando, ModoAguardandoVerificacao
-from celular_robo.excecoes import ErroColeta
+from celular_robo.modos import ModoAguardandoVerificacao
 
 CAMINHO_BASE = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 CONFIG_PADRAO = os.path.join(CAMINHO_BASE, "dados", "config_robo_exemplo.json")
@@ -63,17 +62,10 @@ def processar_pedido(sessao):
         print("Bandeja aguardando verificação da equipe — aprove ou rejeite antes.")
         return
 
-    while sessao.indice < len(sessao.pedido.comandos):
-        comando = sessao.pedido.comandos[sessao.indice]
-        try:
-            comando.executar(sessao.robo)
-        except ErroColeta as erro:
-            sessao.robo.notificar("pedido_rejeitado", motivo=str(erro))
-            print(f"Falha ao coletar {comando.codinome}: {erro}")
-            return
-        sessao.indice += 1
-
-    sessao.robo.conferir_bandeja(sessao.pedido)
+    sessao.indice, erro = sessao.robo.processar_pedido(sessao.pedido, sessao.indice)
+    if erro is not None:
+        parado = sessao.pedido.comandos[sessao.indice]
+        print(f"Falha ao coletar {parado.codinome}: {erro}")
 
 
 def desfazer_ultima_coleta(sessao):
@@ -99,9 +91,9 @@ def aprovar_retirada(sessao):
         print("Bandeja ainda não está pronta.")
         return
     sessao.equipe.bandeja_pronta = False
-    sessao.robo.bandeja = {}
-    sessao.robo.modo = ModoColetando()
+    sessao.robo.aprovar_lote()
     sessao.pedido = None
+    sessao.indice = 0
     print("Retirada aprovada — bandeja liberada, robô pronto pra novo pedido.")
 
 
@@ -111,8 +103,7 @@ def rejeitar_retirada(sessao):
         print("Bandeja ainda não está pronta.")
         return
     sessao.equipe.bandeja_pronta = False
-    sessao.robo.notificar("pedido_rejeitado", motivo="rejeitado pela equipe")
-    sessao.robo.modo = ModoColetando()
+    sessao.robo.rejeitar_lote("rejeitado pela equipe")
     print("Retirada rejeitada — itens coletados permanecem, mesmo pedido continua.")
 
 

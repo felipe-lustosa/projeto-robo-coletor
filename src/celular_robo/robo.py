@@ -2,6 +2,7 @@
 
 from celular_robo.robo_base import Robo
 from celular_robo.modos import ModoColetando
+from celular_robo.excecoes import ErroColeta
 
 
 class QuantidadeValida:
@@ -79,3 +80,41 @@ class RoboColetor(Robo):
             return False
         self.notificar("bandeja_pronta", lote=getattr(pedido, "lote", None))
         return True
+
+    def processar_pedido(self, pedido, inicio=0):
+        """Executa os comandos do pedido a partir de `inicio` e confere a
+        bandeja no fim.
+
+        Devolve (índice do próximo item a processar, erro que interrompeu o
+        pedido ou None). Uma coleta recusada vira notificação
+        "pedido_rejeitado" e para o pedido — é por aqui que
+        RegistroAuditoria enxerga a rejeição (Seção 2.3), em vez de ela ser
+        emitida pela CLI.
+        """
+        indice = inicio
+        while indice < len(pedido.comandos):
+            comando = pedido.comandos[indice]
+            try:
+                comando.executar(self)
+            except ErroColeta as erro:
+                self.notificar(
+                    "pedido_rejeitado",
+                    codinome=comando.codinome,
+                    motivo=str(erro),
+                )
+                return indice, erro
+            indice += 1
+        self.conferir_bandeja(pedido)
+        return indice, None
+
+    def aprovar_lote(self):
+        """A equipe aprovou: bandeja liberada e robô pronto pra novo pedido."""
+        self.bandeja = {}
+        self.modo = ModoColetando()
+        self.notificar("lote_aprovado")
+
+    def rejeitar_lote(self, motivo):
+        """A equipe recusou: volta a coletar o mesmo pedido, mantendo os
+        itens já na bandeja (Seção 2.3); a rejeição só é registrada."""
+        self.modo = ModoColetando()
+        self.notificar("pedido_rejeitado", motivo=motivo)

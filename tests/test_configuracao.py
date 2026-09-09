@@ -3,6 +3,7 @@
 import pytest
 
 from celular_robo.fabrica import criar_robo_configurado
+from celular_robo.comandos import ComandoColeta
 from celular_robo.estrategias import RotaDireta, RotaComDuplaConferencia
 from celular_robo.modos import ModoColetando
 from celular_robo.excecoes import ConfiguracaoInvalida
@@ -42,3 +43,40 @@ def test_area_quarentena_tem_obstaculo_de_verdade():
         estrategia_nome="com_dupla_conferencia", area_nome="area_quarentena",
     )
     assert len(robo.obstaculos) >= 1
+
+
+# requires (Seção 2.4): fragil exige RotaComDuplaConferencia, urgente exige
+# RotaDireta. O par (marcação do item, rota do robô) ou coleta, ou é recusado.
+REQUIRES = [
+    ("fragil", "com_dupla_conferencia", None),
+    ("fragil", "direta", ConfiguracaoInvalida),
+    ("urgente", "direta", None),
+    ("urgente", "com_dupla_conferencia", ConfiguracaoInvalida),
+    (None, "direta", None),
+    (None, "com_dupla_conferencia", None),
+]
+
+
+@pytest.mark.parametrize("marcacao, estrategia_nome, excecao_esperada", REQUIRES)
+def test_requires_item_para_rota(marcacao, estrategia_nome, excecao_esperada):
+    """A rota do robô precisa atender o requires do item, senão a coleta é
+    recusada antes de mexer na bandeja."""
+    robo = criar_robo_configurado(
+        "RoboColetor", "Coletor-Teste",
+        estrategia_nome=estrategia_nome, area_nome="centro_padrao",
+    )
+    comando = ComandoColeta(
+        "Projeto 01", (2, 2), 1,
+        fragil=marcacao == "fragil", urgente=marcacao == "urgente",
+    )
+
+    if excecao_esperada is not None:
+        with pytest.raises(excecao_esperada):
+            comando.executar(robo)
+        assert robo.bandeja == {}
+        assert comando.quantidade_coletada == 0
+        assert robo.historico == ()
+        return
+
+    comando.executar(robo)
+    assert robo.bandeja == {"Projeto 01": 1}

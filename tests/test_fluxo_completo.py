@@ -152,3 +152,71 @@ def test_robo_com_bandeja_vazia_continua_verdadeiro():
     robo = _robo_de_exemplo()
     assert len(robo) == 0
     assert bool(robo) is True
+
+
+def test_pedido_rejeitado_e_registrado_pela_auditoria():
+    """Seção 2.3: a coleta recusada vira "pedido_rejeitado" no modelo, não na
+    CLI — é assim que a auditoria enxerga a rejeição."""
+    robo = _robo_de_exemplo()
+    auditoria = RegistroAuditoria()
+    robo.adicionar_observador(auditoria)
+    robo.obstaculos = {(1, 0): "equipamento", (0, 1): "equipamento"}
+    pedido = montar_pedido_de_json(str(DADOS / "pedido_coleta_exemplo.json"))
+
+    indice, erro = robo.processar_pedido(pedido)
+
+    assert isinstance(erro, ColetaBloqueada)
+    assert indice == 0
+    assert robo.bandeja == {}
+    rejeicoes = [dados for evento, dados in auditoria.eventos
+                 if evento == "pedido_rejeitado"]
+    assert len(rejeicoes) == 1
+    assert rejeicoes[0]["codinome"] == pedido.comandos[0].codinome
+
+
+def test_processar_pedido_completo_avisa_a_equipe():
+    """Sem falha, processar_pedido vai até o fim e confere a bandeja sozinho."""
+    robo = _robo_de_exemplo()
+    equipe = EquipeDeTestes()
+    robo.adicionar_observador(equipe)
+    pedido = montar_pedido_de_json(str(DADOS / "pedido_coleta_exemplo.json"))
+
+    indice, erro = robo.processar_pedido(pedido)
+
+    assert erro is None
+    assert indice == len(pedido.comandos)
+    assert equipe.bandeja_pronta is True
+    assert isinstance(robo.modo, ModoAguardandoVerificacao)
+
+
+def test_rejeitar_lote_volta_a_coletando_mantendo_a_bandeja():
+    """Seção 2.3: rejeitado, o robô volta ao mesmo pedido com os itens já
+    coletados, e a rejeição fica registrada."""
+    robo = _robo_de_exemplo()
+    auditoria = RegistroAuditoria()
+    robo.adicionar_observador(auditoria)
+    robo.adicionar_observador(EquipeDeTestes())
+    pedido = montar_pedido_de_json(str(DADOS / "pedido_coleta_exemplo.json"))
+    robo.processar_pedido(pedido)
+    assert isinstance(robo.modo, ModoAguardandoVerificacao)
+    bandeja_antes = dict(robo.bandeja)
+
+    robo.rejeitar_lote("rejeitado pela equipe")
+
+    assert isinstance(robo.modo, ModoColetando)
+    assert robo.bandeja == bandeja_antes
+    assert "pedido_rejeitado" in [evento for evento, _ in auditoria.eventos]
+
+
+def test_aprovar_lote_libera_a_bandeja():
+    """Aprovado, o lote sai da bandeja e o robô volta a poder coletar."""
+    robo = _robo_de_exemplo()
+    robo.adicionar_observador(EquipeDeTestes())
+    pedido = montar_pedido_de_json(str(DADOS / "pedido_coleta_exemplo.json"))
+    robo.processar_pedido(pedido)
+
+    robo.aprovar_lote()
+
+    assert robo.bandeja == {}
+    assert len(robo) == 0
+    assert isinstance(robo.modo, ModoColetando)
