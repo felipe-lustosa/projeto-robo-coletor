@@ -27,8 +27,8 @@ DADOS = Path(__file__).resolve().parent.parent / "dados"
 
 def _coletor_com_despacho(area_transporte="centro_padrao"):
     """Coletor de exemplo já observado pela equipe, auditoria e despacho."""
-    config = json.loads((DADOS / "config_robo_exemplo.json").read_text(encoding="utf-8"))
-    coletor = montar_robo_de_config(config)
+    caminho = DADOS / "config_robo_exemplo.json"
+    coletor = montar_robo_de_config(json.loads(caminho.read_text(encoding="utf-8")))
     auditoria = RegistroAuditoria()
     despacho = DespachoTransporte(area_nome=area_transporte, observadores=[auditoria])
     coletor.adicionar_observador(EquipeDeTestes())

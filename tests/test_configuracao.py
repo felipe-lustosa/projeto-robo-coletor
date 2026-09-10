@@ -16,8 +16,12 @@ CENARIOS = [
 ]
 
 
-@pytest.mark.parametrize("estrategia_nome, area_nome, classe_esperada, excecao_esperada", CENARIOS)
-def test_contrato_criar_ou_recusar(estrategia_nome, area_nome, classe_esperada, excecao_esperada):
+@pytest.mark.parametrize(
+    "estrategia_nome, area_nome, classe_esperada, excecao_esperada", CENARIOS
+)
+def test_contrato_criar_ou_recusar(
+    estrategia_nome, area_nome, classe_esperada, excecao_esperada
+):
     """Cada combinação estratégia x área ou cria o robô, ou é recusada."""
     if excecao_esperada is not None:
         with pytest.raises(excecao_esperada):

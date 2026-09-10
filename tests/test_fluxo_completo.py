@@ -15,6 +15,12 @@ from celular_robo.persistencia import montar_robo_de_config, montar_pedido_de_js
 
 DADOS = Path(__file__).resolve().parent.parent / "dados"
 
+
+def _robo_de_exemplo():
+    """Robô montado a partir de dados/config_robo_exemplo.json."""
+    caminho = DADOS / "config_robo_exemplo.json"
+    return montar_robo_de_config(json.loads(caminho.read_text(encoding="utf-8")))
+
 def test_transicao_modo_via_observer_ao_notificar_bandeja_pronta():
     """É o Observer que troca o modo quando a bandeja fica pronta."""
     robo = RoboColetor("Coletor-Teste", estrategia=RotaDireta(), modo=ModoColetando())
@@ -31,8 +37,7 @@ def test_transicao_modo_via_observer_ao_notificar_bandeja_pronta():
 
 def test_fluxo_completo_pedido_ate_bandeja_pronta():
     """Do JSON de config e pedido até a bandeja pronta."""
-    config = json.loads((DADOS / "config_robo_exemplo.json").read_text(encoding="utf-8"))
-    robo = montar_robo_de_config(config)
+    robo = _robo_de_exemplo()
     equipe = EquipeDeTestes()
     robo.adicionar_observador(equipe)
 
@@ -49,8 +54,7 @@ def test_fluxo_completo_pedido_ate_bandeja_pronta():
 
 def test_auditoria_loga_coleta_e_pedido_guarda_historico():
     """A auditoria loga cada coleta e o histórico guarda os comandos."""
-    config = json.loads((DADOS / "config_robo_exemplo.json").read_text(encoding="utf-8"))
-    robo = montar_robo_de_config(config)
+    robo = _robo_de_exemplo()
     auditoria = RegistroAuditoria()
     robo.adicionar_observador(auditoria)
 
@@ -66,8 +70,7 @@ def test_auditoria_loga_coleta_e_pedido_guarda_historico():
 
 def test_desfazer_remove_da_bandeja_e_do_historico():
     """desfazer devolve bandeja e histórico ao estado anterior à coleta."""
-    config = json.loads((DADOS / "config_robo_exemplo.json").read_text(encoding="utf-8"))
-    robo = montar_robo_de_config(config)
+    robo = _robo_de_exemplo()
     pedido = montar_pedido_de_json(str(DADOS / "pedido_coleta_exemplo.json"))
 
     primeiro = pedido.comandos[0]
@@ -79,11 +82,6 @@ def test_desfazer_remove_da_bandeja_e_do_historico():
     assert len(robo) == 0
     assert robo.historico == ()
     assert primeiro.quantidade_coletada == 0
-
-
-def _robo_de_exemplo():
-    config = json.loads((DADOS / "config_robo_exemplo.json").read_text(encoding="utf-8"))
-    return montar_robo_de_config(config)
 
 
 def test_robo_confere_a_bandeja_e_avisa_a_equipe_sozinho():
