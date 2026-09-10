@@ -6,7 +6,6 @@ criar_robo_configurado(tipo_nome, nome, estrategia_nome=..., area_nome=...)
 
 from celular_robo.fabrica_base import criar_robo
 from celular_robo.estrategias import RotaColeta
-from celular_robo.modos import ModoColetando
 from celular_robo.modelo_features import (
     NOMES_ROTAS,
     obstaculos_da_area,
@@ -15,12 +14,11 @@ from celular_robo.modelo_features import (
 
 
 def criar_robo_coletor(tipo_nome, nome, estrategia_nome, area_nome, **kwargs):
-    """Monta o robô com a rota, o modo inicial e os obstáculos da área."""
+    """Monta o robô com a rota e os obstáculos da área, a partir do registro."""
     classe_rota = RotaColeta._registro_rotas[NOMES_ROTAS[estrategia_nome]]
     return criar_robo(
         tipo_nome, nome,
         estrategia=classe_rota(),
-        modo=ModoColetando(),
         obstaculos=obstaculos_da_area(area_nome),
         **kwargs,
     )

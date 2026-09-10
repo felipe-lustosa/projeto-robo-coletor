@@ -108,10 +108,16 @@ class RoboColetor(Robo):
         return indice, None
 
     def aprovar_lote(self):
-        """A equipe aprovou: bandeja liberada e robô pronto pra novo pedido."""
+        """A equipe aprovou: bandeja liberada e robô pronto pra novo pedido.
+
+        O lote sai junto no evento ("itens"), porque a bandeja já foi
+        esvaziada quando o Observer é chamado — é esse conteúdo que o
+        DespachoTransporte entrega ao RoboTransportador.
+        """
+        lote = dict(self.bandeja)
         self.bandeja = {}
         self.modo = ModoColetando()
-        self.notificar("lote_aprovado")
+        self.notificar("lote_aprovado", itens=lote)
 
     def rejeitar_lote(self, motivo):
         """A equipe recusou: volta a coletar o mesmo pedido, mantendo os

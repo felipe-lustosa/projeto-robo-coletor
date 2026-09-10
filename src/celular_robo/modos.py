@@ -1,7 +1,7 @@
-"""State: modos de operação do robô coletor (Seção 2.3)."""
+"""State: modos de operação dos robôs (Seções 2.3 e 7)."""
 
 from celular_robo.modos_base import ModoOperacao
-from celular_robo.excecoes import ColetaBloqueada
+from celular_robo.excecoes import ColetaBloqueada, TransporteBloqueado
 
 
 class ModoColetando(ModoOperacao):
@@ -29,3 +29,39 @@ class ModoAguardandoVerificacao(ModoOperacao):
             f"{robo.nome} aguarda verificação da bandeja: a equipe precisa "
             f"decidir sobre o lote antes de coletar {comando.codinome}"
         )
+
+
+class ModoAguardandoCarga(ModoOperacao):
+    """Modo inicial do RoboTransportador: parado no ponto de
+    partida até a equipe aprovar um lote e a carga chegar."""
+
+    def mover(self, robo):
+        print(f"{robo.nome} está sem carga, aguardando um lote aprovado.")
+        return False
+
+    def transportar(self, robo):
+        """Recusa transportar sem carga — mesma ideia de
+        ModoAguardandoVerificacao recusando coletar."""
+        raise TransporteBloqueado(
+            f"{robo.nome} não tem carga: só transporta depois de a equipe "
+            f"aprovar um lote"
+        )
+
+
+class ModoTransportando(ModoOperacao):
+    """Carga a bordo: o transportador leva o lote até o ponto de retirada."""
+
+    def mover(self, robo):
+        return robo.estrategia.mover(robo)
+
+    def transportar(self, robo):
+        """Navega até o ponto de retirada pela rota configurada e confirma a
+        entrega; o State decide se transporta, o Strategy decide por onde."""
+        try:
+            robo.estrategia.navegar_ate(robo, robo.PONTO_RETIRADA)
+        except ColetaBloqueada as erro:
+            raise TransporteBloqueado(
+                f"{robo.nome}: caminho bloqueado até o ponto de retirada "
+                f"{robo.PONTO_RETIRADA} ({erro})"
+            ) from erro
+        return robo.confirmar_entrega()

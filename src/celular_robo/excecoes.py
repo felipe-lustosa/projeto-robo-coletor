@@ -17,3 +17,8 @@ class ColetaBloqueada(ErroColeta):
     """Coleta impedida pelo estado de execução, com config e pedido
     válidos: robô em ModoAguardandoVerificacao, ou prateleira inalcançável
     por obstáculo no caminho."""
+
+
+class TransporteBloqueado(ErroColeta):
+    """Transporte impedido pelo estado de execução: transportador sem carga,
+    ou ponto de retirada inalcançável por obstáculo no caminho (Seção 7)."""

@@ -6,6 +6,7 @@ são digitados à mão.
 
 from celular_robo.robo_base import Robo
 from celular_robo.robo import RoboColetor
+from celular_robo.transportador import RoboTransportador
 from celular_robo.estrategias import RotaColeta
 from celular_robo.excecoes import ConfiguracaoInvalida
 
@@ -32,6 +33,7 @@ AREAS_VALIDAS = set(_OBSTACULOS_POR_AREA)
 
 EXCLUI = {
     "area_quarentena": {"RotaDireta"},
+    "RoboTransportador": {"area_quarentena"},
 }
 
 REQUER = {
@@ -89,7 +91,9 @@ def validar_configuracao(tipo_nome, estrategia_nome, area_nome):
         raise ConfiguracaoInvalida(
             f"área desconhecida: {area_nome!r}. Disponíveis: {sorted(AREAS_VALIDAS)}"
         )
-    if nome_rota in EXCLUI.get(area_nome, set()):
-        raise ConfiguracaoInvalida(
-            f"área {area_nome!r} exclui a estratégia {estrategia_nome!r}"
-        )
+    for feature_a, feature_b in ((area_nome, nome_rota), (tipo_nome, area_nome)):
+        if (feature_b in EXCLUI.get(feature_a, set())
+                or feature_a in EXCLUI.get(feature_b, set())):
+            raise ConfiguracaoInvalida(
+                f"combinação recusada: {feature_a!r} exclui {feature_b!r}"
+            )

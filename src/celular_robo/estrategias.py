@@ -26,7 +26,7 @@ class RotaColeta(ABC):
     def mover(self, robo):
         return robo.avancar()
 
-    def _navegar_ate(self, robo, posicao):
+    def navegar_ate(self, robo, posicao):
         """Anda primeiro no eixo x, depois no y, até a posição.
 
         `avancar_n` para no primeiro obstáculo, então a chegada é conferida
@@ -69,7 +69,7 @@ class RotaDireta(RotaColeta):
     """Vai direto até cada prateleira, sem revalidar o item."""
 
     def coletar(self, robo, comando):
-        self._navegar_ate(robo, comando.posicao)
+        self.navegar_ate(robo, comando.posicao)
         self._depositar(robo, comando)
 
 
@@ -77,7 +77,7 @@ class RotaComDuplaConferencia(RotaColeta):
     """Confere a posição antes de depositar — mais lenta, mais segura."""
 
     def coletar(self, robo, comando):
-        self._navegar_ate(robo, comando.posicao)
+        self.navegar_ate(robo, comando.posicao)
         self._conferir(robo, comando)
         self._conferir(robo, comando)
         self._depositar(robo, comando)
