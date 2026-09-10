@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from celular_robo.robo import RoboColetor
-from celular_robo.estrategias import RotaDireta
+from celular_robo.estrategias import RotaDireta, RotaComDuplaConferencia
 from celular_robo.observadores import EquipeDeTestes, RegistroAuditoria
 from celular_robo.modos import ModoColetando, ModoAguardandoVerificacao
 from celular_robo.comandos import ComandoColeta
@@ -120,14 +120,14 @@ def test_modo_aguardando_verificacao_recusa_nova_coleta():
     assert isinstance(robo.modo, ModoAguardandoVerificacao)
 
     bandeja_antes = dict(robo.bandeja)
-    novo = ComandoColeta("Projeto 03", (2, 2), 1)
+    novo = ComandoColeta("Projeto Boreal", (2, 2), 1)
     with pytest.raises(ColetaBloqueada):
         novo.executar(robo)
     assert robo.bandeja == bandeja_antes
 
     robo.modo = ModoColetando()
     novo.executar(robo)
-    assert robo.bandeja["Projeto 03"] == 1
+    assert robo.bandeja["Projeto Boreal"] == 1
 
 
 def test_rota_nao_deposita_item_que_o_robo_nao_alcancou():
@@ -136,7 +136,7 @@ def test_rota_nao_deposita_item_que_o_robo_nao_alcancou():
     robo = _robo_de_exemplo()
     robo.obstaculos = {(0, 3): "equipamento", (1, 3): "equipamento"}
 
-    comando = ComandoColeta("Projeto 03", (0, 5), 1)
+    comando = ComandoColeta("Projeto Boreal", (0, 5), 1)
     with pytest.raises(ColetaBloqueada):
         comando.executar(robo)
 
@@ -220,3 +220,45 @@ def test_aprovar_lote_libera_a_bandeja():
     assert robo.bandeja == {}
     assert len(robo) == 0
     assert isinstance(robo.modo, ModoColetando)
+
+
+def test_rota_com_dupla_conferencia_registra_a_revalidacao_na_auditoria():
+    """A segunda conferência da rota lenta é visível: emite
+    "item_revalidado" antes de "item_coletado". A RotaDireta não emite."""
+    lenta = RoboColetor(
+        "Coletor-Lento", estrategia=RotaComDuplaConferencia(), modo=ModoColetando()
+    )
+    auditoria = RegistroAuditoria()
+    lenta.adicionar_observador(auditoria)
+    ComandoColeta("Projeto Boreal", (2, 3), 1).executar(lenta)
+
+    eventos = [evento for evento, _ in auditoria.eventos]
+    assert eventos == ["item_revalidado", "item_coletado"]
+    revalidacao = auditoria.eventos[0][1]
+    assert revalidacao["codinome"] == "Projeto Boreal"
+    assert revalidacao["posicao"] == (2, 3)
+
+    rapida = RoboColetor(
+        "Coletor-Rapido", estrategia=RotaDireta(), modo=ModoColetando()
+    )
+    auditoria_rapida = RegistroAuditoria()
+    rapida.adicionar_observador(auditoria_rapida)
+    ComandoColeta("Projeto Boreal", (2, 3), 1).executar(rapida)
+    assert [evento for evento, _ in auditoria_rapida.eventos] == ["item_coletado"]
+
+
+def test_desfazer_comando_nunca_executado_nao_notifica():
+    """Undo sem coleta anterior não mexe na bandeja nem suja a auditoria."""
+    robo = _robo_de_exemplo()
+    auditoria = RegistroAuditoria()
+    robo.adicionar_observador(auditoria)
+    comando = ComandoColeta("Projeto Boreal", (2, 2), 1)
+
+    assert comando.desfazer(robo) is False
+    assert robo.bandeja == {}
+    assert auditoria.eventos == []
+
+    comando.executar(robo)
+    assert comando.desfazer(robo) is True
+    assert robo.bandeja == {}
+    assert [evento for evento, _ in auditoria.eventos][-1] == "coleta_desfeita"

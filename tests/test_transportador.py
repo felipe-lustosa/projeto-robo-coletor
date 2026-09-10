@@ -86,13 +86,13 @@ def test_carregar_troca_o_modo_e_entregar_devolve_ao_inicial():
     """Ciclo de estados: aguardando carga -> transportando -> aguardando."""
     transportador = _transportador()
 
-    transportador.carregar({"Projeto 01": 2})
+    transportador.carregar({"Projeto Aurora": 2})
     assert isinstance(transportador.modo, ModoTransportando)
     assert len(transportador) == 2
 
     entregues = transportador.transportar()
 
-    assert entregues == {"Projeto 01": 2}
+    assert entregues == {"Projeto Aurora": 2}
     assert transportador.posicao == RoboTransportador.PONTO_RETIRADA
     assert transportador.carga == {}
     assert len(transportador) == 0

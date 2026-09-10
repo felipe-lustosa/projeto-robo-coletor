@@ -1,9 +1,9 @@
 {
-  "lote": "Lote de Testes #500",
+  "lote": "Lote de Testes #482",
   "itens": [
-    {"codinome": "Projeto 01", "quantidade": 2, "posicao": [3, 4],
+    {"codinome": "Projeto Aurora", "quantidade": 2, "posicao": [3, 4],
      "fragil": false, "urgente": true},
-    {"codinome": "Projeto 02", "quantidade": 1, "posicao": [6, 6],
+    {"codinome": "Projeto Vesper", "quantidade": 1, "posicao": [7, 2],
      "fragil": false, "urgente": false}
   ]
 }

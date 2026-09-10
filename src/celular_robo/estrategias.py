@@ -4,29 +4,35 @@ A base própria RotaColeta mantém um registro separado do Strategy genérico
 do curso (estrategias_base.py), de onde sai ESTRATEGIAS_VALIDAS.
 """
 
-from abc import ABC, abstractmethod
+from __future__ import annotations
 
-from celular_robo.robo_base import Direcao
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, ClassVar
+
+from celular_robo.robo_base import Direcao, Robo
 from celular_robo.excecoes import ColetaBloqueada
+
+if TYPE_CHECKING:
+    from celular_robo.comandos import ComandoColeta
 
 
 class RotaColeta(ABC):
     """Base das rotas; cada subclasse se registra em _registro_rotas."""
 
-    _registro_rotas = {}
+    _registro_rotas: ClassVar[dict[str, type[RotaColeta]]] = {}
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: object) -> None:
         super().__init_subclass__(**kwargs)
         RotaColeta._registro_rotas[cls.__name__] = cls
 
     @abstractmethod
-    def coletar(self, robo, comando):
+    def coletar(self, robo: Robo, comando: ComandoColeta) -> None:
         """Navega até o item do comando e o deposita na bandeja."""
 
-    def mover(self, robo):
+    def mover(self, robo: Robo) -> bool:
         return robo.avancar()
 
-    def navegar_ate(self, robo, posicao):
+    def navegar_ate(self, robo: Robo, posicao: tuple[int, int]) -> None:
         """Anda primeiro no eixo x, depois no y, até a posição.
 
         `avancar_n` para no primeiro obstáculo, então a chegada é conferida
@@ -51,7 +57,7 @@ class RotaColeta(ABC):
                 f"caminho bloqueado até {(tx, ty)}: robô parou em {robo.posicao}"
             )
 
-    def _depositar(self, robo, comando):
+    def _depositar(self, robo: Robo, comando: ComandoColeta) -> None:
         """Põe o item na bandeja e notifica "item_coletado".
 
         Toda rota deve depositar por aqui — é o que a auditoria enxerga.
@@ -68,21 +74,27 @@ class RotaColeta(ABC):
 class RotaDireta(RotaColeta):
     """Vai direto até cada prateleira, sem revalidar o item."""
 
-    def coletar(self, robo, comando):
+    def coletar(self, robo: Robo, comando: ComandoColeta) -> None:
         self.navegar_ate(robo, comando.posicao)
         self._depositar(robo, comando)
 
 
 class RotaComDuplaConferencia(RotaColeta):
-    """Confere a posição antes de depositar — mais lenta, mais segura."""
+    """Confere posição e item antes de depositar — mais lenta, mais segura.
 
-    def coletar(self, robo, comando):
+    As duas conferências olham coisas diferentes: a primeira, se o robô
+    parou na prateleira certa; a segunda, se o item em mãos é o que o
+    pedido descreve. A segunda fica registrada na auditoria
+    ("item_revalidado"), que é o custo extra visível desta rota.
+    """
+
+    def coletar(self, robo: Robo, comando: ComandoColeta) -> None:
         self.navegar_ate(robo, comando.posicao)
-        self._conferir(robo, comando)
-        self._conferir(robo, comando)
+        self._conferir_posicao(robo, comando)
+        self._revalidar_item(robo, comando)
         self._depositar(robo, comando)
 
-    def _conferir(self, robo, comando):
+    def _conferir_posicao(self, robo: Robo, comando: ComandoColeta) -> None:
         """Levanta ColetaBloqueada se o robô não parou na posição do item."""
         esperado = tuple(comando.posicao)
         if robo.posicao != esperado:
@@ -90,3 +102,18 @@ class RotaComDuplaConferencia(RotaColeta):
                 f"{comando.codinome}: robô em ({robo.x}, {robo.y}), "
                 f"esperado {esperado}"
             )
+
+    def _revalidar_item(self, robo: Robo, comando: ComandoColeta) -> None:
+        """Segunda conferência: o item descrito no comando é coletável
+        (codinome e quantidade positiva) antes de a sucção pegar."""
+        if not comando.codinome or comando.quantidade <= 0:
+            raise ColetaBloqueada(
+                f"revalidação falhou: item {comando.codinome!r} com "
+                f"quantidade {comando.quantidade}"
+            )
+        robo.notificar(
+            "item_revalidado",
+            codinome=comando.codinome,
+            quantidade=comando.quantidade,
+            posicao=robo.posicao,
+        )

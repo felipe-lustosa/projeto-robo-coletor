@@ -10,7 +10,8 @@ class ConfiguracaoInvalida(ErroColeta):
 
 
 class PedidoInvalido(ErroColeta):
-    """Conteúdo inválido no pedido: codinome, quantidade ou pedido vazio."""
+    """Conteúdo inválido no pedido: codinome, quantidade, pedido vazio ou
+    item contraditório (fragil e urgente ao mesmo tempo)."""
 
 
 class ColetaBloqueada(ErroColeta):

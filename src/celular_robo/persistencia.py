@@ -1,26 +1,37 @@
 """Configuração e persistência: robô e pedido vindos de JSON (Seção 2.6)."""
 
+from __future__ import annotations
+
 import json
-from collections import namedtuple
+from typing import Any, NamedTuple
 
 from celular_robo.fabrica import criar_robo_configurado
+from celular_robo.robo_base import Robo
 from celular_robo.comandos import ComandoColeta
 from celular_robo.excecoes import PedidoInvalido
 
-Pedido = namedtuple("Pedido", ["lote", "comandos"])
 
-LOTE_DISPONIVEL = {
-    "Projeto 01": 4,
-    "Projeto 02": 3,
-    "Projeto 03": 2,
-    "Projeto 04": 1,
+class Pedido(NamedTuple):
+    """Pedido carregado: nome do lote e um ComandoColeta por item."""
+
+    lote: str
+    comandos: list[ComandoColeta]
+
+
+LOTE_DISPONIVEL: dict[str, int] = {
+    "Projeto Aurora": 4,
+    "Projeto Vesper": 3,
+    "Projeto Boreal": 2,
+    "Projeto Zenite": 1,
 }
 
 
-def montar_robo_de_config(config):
+def montar_robo_de_config(config: dict[str, Any]) -> Robo:
     """Cria o robô a partir do dict de config; chaves extras viram kwargs."""
     obrigatorios = {"tipo_nome", "nome", "estrategia_nome", "area_nome"}
-    extras = {chave: valor for chave, valor in config.items() if chave not in obrigatorios}
+    extras = {
+        chave: valor for chave, valor in config.items() if chave not in obrigatorios
+    }
     return criar_robo_configurado(
         config["tipo_nome"],
         config["nome"],
@@ -30,7 +41,9 @@ def montar_robo_de_config(config):
     )
 
 
-def montar_pedido_de_json(caminho, lote_disponivel=None):
+def montar_pedido_de_json(
+    caminho: str, lote_disponivel: dict[str, int] | None = None
+) -> Pedido:
     """Lê o pedido do JSON e devolve Pedido(lote, comandos).
 
     Valida contra o lote disponível (LOTE_DISPONIVEL por padrão, injetável
@@ -46,8 +59,8 @@ def montar_pedido_de_json(caminho, lote_disponivel=None):
     if not itens:
         raise PedidoInvalido("pedido vazio: nenhum item em 'itens'")
 
-    comandos = []
-    pedido_por_codinome = {}
+    comandos: list[ComandoColeta] = []
+    pedido_por_codinome: dict[str, int] = {}
     tem_urgente = False
     tem_fragil = False
     for item in itens:

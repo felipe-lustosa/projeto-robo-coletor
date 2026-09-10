@@ -1,23 +1,30 @@
 """RoboColetor e o descriptor QuantidadeValida (Seção 2.1)."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 from celular_robo.robo_base import Robo
 from celular_robo.modos import ModoColetando
 from celular_robo.excecoes import ErroColeta
+
+if TYPE_CHECKING:
+    from celular_robo.persistencia import Pedido
 
 
 class QuantidadeValida:
     """Descriptor: a quantidade coletada fica entre 0 e a quantidade pedida."""
 
-    def __set_name__(self, owner, name):
+    def __set_name__(self, owner: type, name: str) -> None:
         self.nome_publico = name
         self.nome = "_" + name
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance: object | None, owner: type) -> Any:
         if instance is None:
             return self
         return instance.__dict__.get(self.nome, 0)
 
-    def __set__(self, instance, valor):
+    def __set__(self, instance: Any, valor: int) -> None:
         maximo = instance.quantidade
         if not (0 <= valor <= maximo):
             raise ValueError(
@@ -31,24 +38,26 @@ class QuantidadeValida:
 class RoboColetor(Robo):
     """Robô que navega até as prateleiras e deposita os itens na bandeja."""
 
-    def __init__(self, nome, **kwargs):
+    bandeja: dict[str, int]
+
+    def __init__(self, nome: str, **kwargs: Any) -> None:
         kwargs.setdefault("modo", ModoColetando())
         super().__init__(nome, **kwargs)
         self.bandeja = {}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"RoboColetor({self.nome!r}, x={self.x}, y={self.y})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             f"{self.nome} em ({self.x}, {self.y}), {len(self)} item(ns) na bandeja"
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Total de itens na bandeja."""
         return sum(self.bandeja.values())
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         """Um robô existe independente da bandeja.
 
         Sem isto, `__len__` deixaria o robô falsy com a bandeja vazia e um
@@ -56,10 +65,10 @@ class RoboColetor(Robo):
         """
         return True
 
-    def bandeja_completa(self, pedido):
+    def bandeja_completa(self, pedido: Pedido) -> bool:
         """True quando todo codinome do pedido já está na bandeja na
         quantidade pedida (soma os itens repetidos do mesmo codinome)."""
-        exigido = {}
+        exigido: dict[str, int] = {}
         for comando in pedido.comandos:
             exigido[comando.codinome] = (
                 exigido.get(comando.codinome, 0) + comando.quantidade
@@ -69,7 +78,7 @@ class RoboColetor(Robo):
             for codinome, quantidade in exigido.items()
         )
 
-    def conferir_bandeja(self, pedido):
+    def conferir_bandeja(self, pedido: Pedido) -> bool:
         """Notifica "bandeja_pronta" se o pedido está completo, e devolve
         se notificou.
 
@@ -81,7 +90,9 @@ class RoboColetor(Robo):
         self.notificar("bandeja_pronta", lote=getattr(pedido, "lote", None))
         return True
 
-    def processar_pedido(self, pedido, inicio=0):
+    def processar_pedido(
+        self, pedido: Pedido, inicio: int = 0
+    ) -> tuple[int, ErroColeta | None]:
         """Executa os comandos do pedido a partir de `inicio` e confere a
         bandeja no fim.
 
@@ -107,7 +118,7 @@ class RoboColetor(Robo):
         self.conferir_bandeja(pedido)
         return indice, None
 
-    def aprovar_lote(self):
+    def aprovar_lote(self) -> None:
         """A equipe aprovou: bandeja liberada e robô pronto pra novo pedido.
 
         O lote sai junto no evento ("itens"), porque a bandeja já foi
@@ -119,7 +130,7 @@ class RoboColetor(Robo):
         self.modo = ModoColetando()
         self.notificar("lote_aprovado", itens=lote)
 
-    def rejeitar_lote(self, motivo):
+    def rejeitar_lote(self, motivo: str) -> None:
         """A equipe recusou: volta a coletar o mesmo pedido, mantendo os
         itens já na bandeja (Seção 2.3); a rejeição só é registrada."""
         self.modo = ModoColetando()

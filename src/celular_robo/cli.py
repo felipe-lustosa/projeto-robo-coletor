@@ -1,9 +1,17 @@
 """Menu interativo do robô coletor (Seção 4)."""
 
+from __future__ import annotations
+
 import json
 import os
+from typing import Callable
 
-from celular_robo.persistencia import montar_robo_de_config, montar_pedido_de_json
+from celular_robo.persistencia import (
+    Pedido,
+    montar_pedido_de_json,
+    montar_robo_de_config,
+)
+from celular_robo.robo import RoboColetor
 from celular_robo.observadores import (
     DespachoTransporte,
     EquipeDeTestes,
@@ -19,16 +27,22 @@ PEDIDO_PADRAO = os.path.join(CAMINHO_BASE, "dados", "pedido_coleta_exemplo.json"
 class Sessao:
     """Robô, pedido carregado e observadores da sessão; o menu só orquestra."""
 
-    def __init__(self, robo, equipe, auditoria, despacho):
+    def __init__(
+        self,
+        robo: RoboColetor,
+        equipe: EquipeDeTestes,
+        auditoria: RegistroAuditoria,
+        despacho: DespachoTransporte,
+    ) -> None:
         self.robo = robo
         self.equipe = equipe
         self.auditoria = auditoria
         self.despacho = despacho
-        self.pedido = None
+        self.pedido: Pedido | None = None
         self.indice = 0
 
 
-def iniciar_sessao(caminho_config=CONFIG_PADRAO):
+def iniciar_sessao(caminho_config: str = CONFIG_PADRAO) -> Sessao:
     """Monta o robô do arquivo de config e registra os observadores."""
     with open(caminho_config, encoding="utf-8") as arquivo:
         config = json.load(arquivo)
@@ -42,13 +56,13 @@ def iniciar_sessao(caminho_config=CONFIG_PADRAO):
     return Sessao(robo, equipe, auditoria, despacho)
 
 
-def carregar_pedido(sessao, caminho_pedido=PEDIDO_PADRAO):
+def carregar_pedido(sessao: Sessao, caminho_pedido: str = PEDIDO_PADRAO) -> None:
     """Carrega um pedido de coleta na sessão."""
     sessao.pedido = montar_pedido_de_json(caminho_pedido)
     sessao.indice = 0
 
 
-def listar_pedido(sessao):
+def listar_pedido(sessao: Sessao) -> None:
     """Mostra os itens do pedido, marcando os já processados."""
     if sessao.pedido is None:
         print("Nenhum pedido carregado.")
@@ -57,10 +71,11 @@ def listar_pedido(sessao):
     for i, comando in enumerate(sessao.pedido.comandos):
         marca = "x" if i < sessao.indice else " "
         print(f"  [{marca}] {comando.codinome} qtd={comando.quantidade} "
-              f"pos={comando.posicao} fragil={comando.fragil} urgente={comando.urgente}")
+              f"pos={comando.posicao} fragil={comando.fragil} "
+              f"urgente={comando.urgente}")
 
 
-def processar_pedido(sessao):
+def processar_pedido(sessao: Sessao) -> None:
     """Executa os itens restantes; para na primeira falha de coleta."""
     if sessao.pedido is None:
         print("Nenhum pedido carregado.")
@@ -75,24 +90,26 @@ def processar_pedido(sessao):
         print(f"Falha ao coletar {parado.codinome}: {erro}")
 
 
-def desfazer_ultima_coleta(sessao):
+def desfazer_ultima_coleta(sessao: Sessao) -> None:
     """Undo do Command: devolve a última coleta (bandeja, contagem e
     histórico do robô) e recua o ponteiro do pedido."""
     if not sessao.robo.historico:
         print("Nada a desfazer.")
         return
     comando = sessao.robo.historico[-1]
-    comando.desfazer(sessao.robo)
+    if not comando.desfazer(sessao.robo):
+        print("Nada a desfazer.")
+        return
     sessao.indice = max(0, sessao.indice - 1)
     print(f"Coleta de {comando.codinome} desfeita.")
 
 
-def ver_bandeja(sessao):
+def ver_bandeja(sessao: Sessao) -> None:
     """Imprime o conteúdo atual da bandeja."""
     print(f"Bandeja ({len(sessao.robo)} item(ns)): {sessao.robo.bandeja}")
 
 
-def aprovar_retirada(sessao):
+def aprovar_retirada(sessao: Sessao) -> None:
     """Libera a bandeja e deixa o robô pronto pra um novo pedido."""
     if not sessao.equipe.bandeja_pronta:
         print("Bandeja ainda não está pronta.")
@@ -105,7 +122,7 @@ def aprovar_retirada(sessao):
     ver_transporte(sessao)
 
 
-def rejeitar_retirada(sessao):
+def rejeitar_retirada(sessao: Sessao) -> None:
     """Recusa a retirada; a bandeja e o pedido continuam como estão."""
     if not sessao.equipe.bandeja_pronta:
         print("Bandeja ainda não está pronta.")
@@ -115,7 +132,7 @@ def rejeitar_retirada(sessao):
     print("Retirada rejeitada — itens coletados permanecem, mesmo pedido continua.")
 
 
-def ver_transporte(sessao):
+def ver_transporte(sessao: Sessao) -> None:
     """Mostra o transportador despachado no último lote aprovado (Seção 7)."""
     transportador = sessao.despacho.transportador
     if transportador is None:
@@ -129,10 +146,10 @@ def ver_transporte(sessao):
         print(f"  carga a bordo: {transportador.carga}")
 
 
-def menu():
+def menu() -> None:
     """Laço do menu interativo."""
     sessao = iniciar_sessao()
-    opcoes = {
+    opcoes: dict[str, tuple[str, Callable[[], None] | None]] = {
         "1": ("listar pedido carregado", lambda: listar_pedido(sessao)),
         "2": ("carregar pedido de exemplo", lambda: carregar_pedido(sessao)),
         "3": ("processar pedido", lambda: processar_pedido(sessao)),
@@ -154,7 +171,9 @@ def menu():
         if item is None:
             print("Opção inválida.")
             continue
-        item[1]()
+        acao = item[1]
+        if acao is not None:
+            acao()
 
 
 if __name__ == "__main__":

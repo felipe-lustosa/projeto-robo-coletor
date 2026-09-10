@@ -73,7 +73,10 @@ reorganização.
 - **`fragil=True` e `urgente=True` no mesmo item** (Seção 2.4) →
   `PedidoInvalido`, ao carregar o pedido. O defeito está no conteúdo do
   item, contraditório independente de qual robô o processe, não numa
-  configuração de robô/rota/área.
+  configuração de robô/rota/área. A mesma exceção vale se o
+  `ComandoColeta` for construído à mão e executado sem passar pelo JSON
+  (`validar_item_para_estrategia`) — a escolha é uma só, qualquer que seja
+  o ponto de entrada.
 - **Pedido com um item `urgente` e outro `fragil`** (Seção 2.4) → também
   `PedidoInvalido`, no carregamento e antes de processar qualquer item:
   `robo.estrategia` é única por robô. A checagem não cabe em
@@ -107,13 +110,27 @@ reorganização.
   `(índice do próximo item, erro ou None)`, e a CLI só imprime o resultado —
   assim os três eventos que a Seção 2.3 pede da auditoria (coleta, bandeja
   pronta, pedido rejeitado) saem todos do modelo e ficam testáveis.
+- **As duas conferências da `RotaComDuplaConferencia` conferem coisas
+  diferentes**: `_conferir_posicao` checa se o robô parou na prateleira
+  certa; `_revalidar_item` checa o item em si (codinome, quantidade) e
+  emite `"item_revalidado"` — o custo extra da rota lenta fica visível na
+  trilha de auditoria, e a `RotaDireta` nunca emite esse evento.
+- **`desfazer` de comando nunca executado é um no-op**: devolve `False` e
+  não notifica `"coleta_desfeita"`, pra não sujar a auditoria com um undo
+  vazio.
 - **Nenhuma rota deposita item que o robô não alcançou**: `avancar_n` para
   no primeiro obstáculo, então `RotaColeta.navegar_ate` confere a chegada
   e levanta `ColetaBloqueada`.
-- **`dados/pedido_coleta_exemplo.json` diverge do trecho da Seção 2.6**: o
-  exemplo do enunciado tem um item `urgente` e um `fragil`, exatamente o
-  conflito acima. Usei o trecho como referência de schema; o JSON entregue
-  roda de ponta a ponta.
+- **`dados/pedido_coleta_exemplo.json` diverge do trecho da Seção 2.6 num
+  campo**: o exemplo do enunciado tem um item `urgente` e um `fragil`,
+  exatamente o conflito acima. Mantive lote, codinomes, posições e
+  quantidades do enunciado, e só o `"Projeto Vesper"` deixou de ser
+  `fragil` — assim o JSON entregue roda de ponta a ponta com a config de
+  exemplo (`"direta"`).
+- **Tipagem**: todos os módulos autorais têm anotações de tipo (`from
+  __future__ import annotations`, imports só de tipo sob `TYPE_CHECKING`
+  para evitar ciclos entre `robo`/`comandos`/`modos`/`persistencia`). Os
+  `*_base.py` fornecidos não são anotados, e não foram tocados.
 - **Aprovar/rejeitar** (Seção 2.3): `RoboColetor.aprovar_lote()` limpa a
   bandeja e volta pra `ModoColetando`; `rejeitar_lote(motivo)` também volta
   pra `ModoColetando`, mas mantém os itens coletados e o mesmo pedido,

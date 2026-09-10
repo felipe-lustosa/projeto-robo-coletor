@@ -6,7 +6,7 @@ from celular_robo.fabrica import criar_robo_configurado
 from celular_robo.comandos import ComandoColeta
 from celular_robo.estrategias import RotaDireta, RotaComDuplaConferencia
 from celular_robo.modos import ModoColetando
-from celular_robo.excecoes import ConfiguracaoInvalida
+from celular_robo.excecoes import ConfiguracaoInvalida, PedidoInvalido
 
 CENARIOS = [
     ("direta", "centro_padrao", RotaDireta, None),
@@ -66,7 +66,7 @@ def test_requires_item_para_rota(marcacao, estrategia_nome, excecao_esperada):
         estrategia_nome=estrategia_nome, area_nome="centro_padrao",
     )
     comando = ComandoColeta(
-        "Projeto 01", (2, 2), 1,
+        "Projeto Aurora", (2, 2), 1,
         fragil=marcacao == "fragil", urgente=marcacao == "urgente",
     )
 
@@ -79,4 +79,20 @@ def test_requires_item_para_rota(marcacao, estrategia_nome, excecao_esperada):
         return
 
     comando.executar(robo)
-    assert robo.bandeja == {"Projeto 01": 1}
+    assert robo.bandeja == {"Projeto Aurora": 1}
+
+
+def test_item_fragil_e_urgente_direto_no_comando_tambem_e_pedido_invalido():
+    """A escolha do README (PedidoInvalido pra item contraditório) vale
+    também fora do JSON: construir o ComandoColeta à mão e executar cai na
+    mesma exceção, não em ConfiguracaoInvalida."""
+    robo = criar_robo_configurado(
+        "RoboColetor", "Coletor-Teste",
+        estrategia_nome="direta", area_nome="centro_padrao",
+    )
+    comando = ComandoColeta("Projeto Aurora", (1, 1), 1, fragil=True, urgente=True)
+
+    with pytest.raises(PedidoInvalido):
+        comando.executar(robo)
+    assert robo.bandeja == {}
+    assert robo.historico == ()

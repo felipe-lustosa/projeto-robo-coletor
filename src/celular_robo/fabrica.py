@@ -4,7 +4,12 @@ Contrato exigido por tests/test_00_fornecido.py:
 criar_robo_configurado(tipo_nome, nome, estrategia_nome=..., area_nome=...)
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 from celular_robo.fabrica_base import criar_robo
+from celular_robo.robo_base import Robo
 from celular_robo.estrategias import RotaColeta
 from celular_robo.modelo_features import (
     NOMES_ROTAS,
@@ -13,7 +18,13 @@ from celular_robo.modelo_features import (
 )
 
 
-def criar_robo_coletor(tipo_nome, nome, estrategia_nome, area_nome, **kwargs):
+def criar_robo_coletor(
+    tipo_nome: str,
+    nome: str,
+    estrategia_nome: str,
+    area_nome: str,
+    **kwargs: Any,
+) -> Robo:
     """Monta o robô com a rota e os obstáculos da área, a partir do registro."""
     classe_rota = RotaColeta._registro_rotas[NOMES_ROTAS[estrategia_nome]]
     return criar_robo(
@@ -24,7 +35,13 @@ def criar_robo_coletor(tipo_nome, nome, estrategia_nome, area_nome, **kwargs):
     )
 
 
-def criar_robo_configurado(tipo_nome, nome, estrategia_nome, area_nome, **kwargs):
+def criar_robo_configurado(
+    tipo_nome: str,
+    nome: str,
+    estrategia_nome: str,
+    area_nome: str,
+    **kwargs: Any,
+) -> Robo:
     """Valida a configuração (Seção 2.4) antes de criar o robô."""
     validar_configuracao(tipo_nome, estrategia_nome, area_nome)
     return criar_robo_coletor(tipo_nome, nome, estrategia_nome, area_nome, **kwargs)
