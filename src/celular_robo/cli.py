@@ -4,7 +4,11 @@ import json
 import os
 
 from celular_robo.persistencia import montar_robo_de_config, montar_pedido_de_json
-from celular_robo.observadores import EquipeDeTestes, RegistroAuditoria
+from celular_robo.observadores import (
+    DespachoTransporte,
+    EquipeDeTestes,
+    RegistroAuditoria,
+)
 from celular_robo.modos import ModoAguardandoVerificacao
 
 CAMINHO_BASE = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -15,10 +19,11 @@ PEDIDO_PADRAO = os.path.join(CAMINHO_BASE, "dados", "pedido_coleta_exemplo.json"
 class Sessao:
     """Robô, pedido carregado e observadores da sessão; o menu só orquestra."""
 
-    def __init__(self, robo, equipe, auditoria):
+    def __init__(self, robo, equipe, auditoria, despacho):
         self.robo = robo
         self.equipe = equipe
         self.auditoria = auditoria
+        self.despacho = despacho
         self.pedido = None
         self.indice = 0
 
@@ -30,9 +35,11 @@ def iniciar_sessao(caminho_config=CONFIG_PADRAO):
     robo = montar_robo_de_config(config)
     equipe = EquipeDeTestes()
     auditoria = RegistroAuditoria()
+    despacho = DespachoTransporte(observadores=[auditoria])
     robo.adicionar_observador(equipe)
     robo.adicionar_observador(auditoria)
-    return Sessao(robo, equipe, auditoria)
+    robo.adicionar_observador(despacho)
+    return Sessao(robo, equipe, auditoria, despacho)
 
 
 def carregar_pedido(sessao, caminho_pedido=PEDIDO_PADRAO):
@@ -95,6 +102,7 @@ def aprovar_retirada(sessao):
     sessao.pedido = None
     sessao.indice = 0
     print("Retirada aprovada — bandeja liberada, robô pronto pra novo pedido.")
+    ver_transporte(sessao)
 
 
 def rejeitar_retirada(sessao):
@@ -105,6 +113,20 @@ def rejeitar_retirada(sessao):
     sessao.equipe.bandeja_pronta = False
     sessao.robo.rejeitar_lote("rejeitado pela equipe")
     print("Retirada rejeitada — itens coletados permanecem, mesmo pedido continua.")
+
+
+def ver_transporte(sessao):
+    """Mostra o transportador despachado no último lote aprovado (Seção 7)."""
+    transportador = sessao.despacho.transportador
+    if transportador is None:
+        print("Nenhum transporte despachado ainda.")
+        return
+    print(f"Transportador: {transportador}")
+    if transportador.entregues:
+        print(f"  entregue em {transportador.PONTO_RETIRADA}: "
+              f"{transportador.entregues}")
+    else:
+        print(f"  carga a bordo: {transportador.carga}")
 
 
 def menu():
@@ -118,6 +140,7 @@ def menu():
         "5": ("desfazer última coleta", lambda: desfazer_ultima_coleta(sessao)),
         "6": ("aprovar retirada", lambda: aprovar_retirada(sessao)),
         "7": ("rejeitar retirada", lambda: rejeitar_retirada(sessao)),
+        "8": ("ver estado do transporte", lambda: ver_transporte(sessao)),
         "0": ("sair", None),
     }
     while True:

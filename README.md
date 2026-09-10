@@ -32,13 +32,16 @@ PYTHONPATH=src python3 -m celular_robo.cli
 O menu carrega o robô de `dados/config_robo_exemplo.json` ao iniciar, e a
 opção 2 carrega o pedido de `dados/pedido_coleta_exemplo.json`. Opções:
 listar pedido, carregar pedido, processar, ver bandeja, desfazer última
-coleta, aprovar e rejeitar retirada.
+coleta, aprovar e rejeitar retirada, ver estado do transporte.
 
 Valores válidos na configuração:
 
 - `estrategia_nome`: `"direta"` (`RotaDireta`) ou `"com_dupla_conferencia"`
   (`RotaComDuplaConferencia`).
 - `area_nome`: `"centro_padrao"` ou `"area_quarentena"`.
+- `tipo_nome`: `"RoboColetor"` ou `"RoboTransportador"` (Seção 7) — o
+  transportador não é configurado por arquivo, quem o cria é o
+  `DespachoTransporte`.
 
 ## Decisões de projeto
 
@@ -52,6 +55,10 @@ reorganização.
   por item, então o descriptor lê o limite do atributo `quantidade` da
   instância em que mora (`ComandoColeta`), em vez de receber min/max no
   construtor como `Coordenada`.
+- **Método `navegar_ate` público em `RotaColeta`**: era `_navegar_ate`,
+  privado, quando só a coleta navegava; o `RoboTransportador` (Seção 7) usa
+  a mesma rota pra chegar ao ponto de retirada, então virou parte da
+  interface da estratégia.
 - **`RotaColeta` não herda de `Estrategia`** (Seção 2.2): hierarquia própria
   com `__init_subclass__`/`_registro_rotas`, senão
   `ESTRATEGIAS_VALIDAS = set(_registro_rotas)` viria contaminado com as
@@ -101,7 +108,7 @@ reorganização.
   assim os três eventos que a Seção 2.3 pede da auditoria (coleta, bandeja
   pronta, pedido rejeitado) saem todos do modelo e ficam testáveis.
 - **Nenhuma rota deposita item que o robô não alcançou**: `avancar_n` para
-  no primeiro obstáculo, então `RotaColeta._navegar_ate` confere a chegada
+  no primeiro obstáculo, então `RotaColeta.navegar_ate` confere a chegada
   e levanta `ColetaBloqueada`.
 - **`dados/pedido_coleta_exemplo.json` diverge do trecho da Seção 2.6**: o
   exemplo do enunciado tem um item `urgente` e um `fragil`, exatamente o
@@ -112,7 +119,36 @@ reorganização.
   pra `ModoColetando`, mas mantém os itens coletados e o mesmo pedido,
   registrando a rejeição via `pedido_rejeitado`. A CLI só cuida do flag da
   `EquipeDeTestes` e do pedido carregado na sessão.
-- **Extensão opcional `RoboTransportador`** (Seção 7): não implementada.
+
+## Extensão opcional — `RoboTransportador` (Seção 7)
+
+Implementada: aprovada a bandeja, um segundo robô leva o lote até o ponto de
+retirada (o carrinho robótico em si continua fora de escopo).
+
+- **Módulo próprio, `transportador.py`**: única divergência da estrutura da
+  Seção 3, que não previa a extensão. Deixa visível que o tipo novo entra em
+  `Robo._registro` — e em `TIPOS_VALIDOS` — só por herdar de `Robo`, sem
+  tocar em `robo.py`. Modos e observador novos ficaram nos arquivos de
+  sempre.
+- **`excludes` novo**: `EXCLUI["RoboTransportador"] = {"area_quarentena"}`.
+  Com restrição de área×rota e de tipo×área, `EXCLUI` passou a ser lido como
+  "feature → features incompatíveis", conferido nos dois sentidos.
+- **Handoff via Observer**: `DespachoTransporte` reage a `"lote_aprovado"`,
+  cria o transportador por `criar_robo_configurado` e chama
+  `carregar`/`transportar`. O coletor não conhece o transportador, só emite
+  o evento que já emitia — agora com `itens=`, porque a bandeja é esvaziada
+  antes de notificar.
+- **State do transportador**: `ModoAguardandoCarga` recusa `transportar` sem
+  carga; `ModoTransportando` navega até `PONTO_RETIRADA` e confirma a
+  entrega. Mesma divisão do coletor.
+- **`TransporteBloqueado(ErroColeta)`**: transporte sem carga ou ponto de
+  retirada inalcançável. `DespachoTransporte` captura isso e
+  `ConfiguracaoInvalida`, reemitindo como `"transporte_falhou"`/
+  `"transporte_recusado"` — `notificar` percorre os observadores em
+  sequência, e uma exceção ali cortaria a auditoria.
+- **`criar_robo_coletor` não impõe mais o modo inicial**: cada tipo define o
+  seu no `__init__`, senão a fábrica genérica teria que conhecer os tipos um
+  a um.
 
 ## Mapeamento pra aulas da disciplina
 
@@ -134,3 +170,8 @@ reorganização.
 | CLI | `cli.py` |
 | Testes fornecidos | `tests/test_00_fornecido.py` |
 | Testes próprios | `tests/test_configuracao.py`, `tests/test_pedido.py`, `tests/test_fluxo_completo.py` (fixtures em `tests/conftest.py`) |
+| Extensão Seção 7 — segundo tipo no mesmo registro | `transportador.py` — `RoboTransportador` |
+| Extensão Seção 7 — State do transportador | `modos.py` — `ModoAguardandoCarga`, `ModoTransportando` |
+| Extensão Seção 7 — handoff via Observer | `observadores.py` — `DespachoTransporte` |
+| Extensão Seção 7 — `excludes` novo | `modelo_features.py` — `EXCLUI["RoboTransportador"]` |
+| Extensão Seção 7 — testes | `tests/test_transportador.py` |
